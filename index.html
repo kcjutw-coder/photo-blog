@@ -30,9 +30,6 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
-    .text-balance {
-      text-wrap: balance;
-    }
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -47,8 +44,8 @@
 </head>
 <body class="text-gray-200 min-h-screen">
 
-  <!-- 頂部導航 -->
-  <header class="fixed top-0 left-0 right-0 z-40 glass border-b border-gray-800 transition-all duration-300">
+  <!-- 頂部導航列 -->
+  <header class="fixed top-0 left-0 right-0 z-40 glass border-b border-gray-800 transition-all">
     <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
       <div class="flex items-center space-x-3 cursor-pointer" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
         <div class="w-3.5 h-3.5 bg-gold rounded-full shadow-lg"></div>
@@ -63,12 +60,12 @@
   </header>
 
   <main class="pt-20">
-    <!-- Canvas 3D 展廳 -->
+    <!-- Canvas 3D 浮動展廳 -->
     <section id="gallery" class="relative w-full h-96 sm:h-[65vh] min-h-[460px] overflow-hidden bg-black border-b border-gray-800">
       <canvas id="stage" class="w-full h-full cursor-grab active:cursor-grabbing block"></canvas>
       
       <div class="absolute bottom-6 left-6 pointer-events-none z-10 hidden sm:flex items-center space-x-2 text-xs tracking-wider text-gray-400 uppercase glass px-3.5 py-1.5 rounded-full border border-gray-800">
-        <span>左右滑動展廳 · 點擊卡片瀏覽專題</span>
+        <span>滑鼠拖曳旋轉展廳 · 點擊卡片閱讀文章</span>
       </div>
 
       <div class="absolute top-8 left-8 z-10 pointer-events-none">
@@ -77,23 +74,20 @@
       </div>
     </section>
 
-    <!-- 文章卡片清單 -->
+    <!-- 文章卡片清單區塊 -->
     <section id="articles" class="max-w-7xl mx-auto px-6 py-16">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-12 border-b border-gray-800 pb-6">
         <div>
           <span class="text-gold tracking-widest text-xs uppercase font-semibold">Articles & Essays</span>
           <h2 class="text-3xl font-serif text-white mt-1">典藏專題文章</h2>
         </div>
-        <!-- 狀態回報欄位 -->
-        <p class="text-sm text-yellow-400 mt-2 sm:mt-0 font-mono" id="article-count-label">初始化中...</p>
+        <!-- 狀態即時回報欄 -->
+        <p class="text-xs text-yellow-400 mt-2 sm:mt-0 font-mono" id="status-indicator">系統啟動中...</p>
       </div>
-
-      <!-- 除錯資訊提示條 -->
-      <div id="debug-banner" class="hidden mb-8 p-4 rounded-xl bg-yellow-900 bg-opacity-30 border border-yellow-700 text-yellow-200 text-xs font-mono"></div>
 
       <!-- 卡片網格 -->
       <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <!-- 動態渲染卡片 -->
+        <!-- 動態渲染卡片內容 -->
       </div>
     </section>
   </main>
@@ -132,7 +126,7 @@
         </div>
 
         <div id="modal-content-container" class="px-8 sm:px-14 py-10 font-serif text-gray-300 space-y-6 text-base leading-relaxed">
-          <!-- 正文內容 -->
+          <!-- 正文內容動態載入 -->
         </div>
 
         <div id="modal-remaining-gallery" class="px-8 sm:px-14 pb-14 hidden">
@@ -150,4 +144,480 @@
 
   <!-- 全螢幕燈箱 (Lightbox) -->
   <div id="lightbox" class="fixed inset-0 z-50 hidden bg-black bg-opacity-95 flex flex-col items-center justify-center p-4 cursor-pointer" onclick="closeLightbox()">
-    <button class="absolute top-6 right-
+    <button class="absolute top-6 right-6 text-white text-3xl font-light hover:text-gold transition">&times;</button>
+    <img id="lightbox-img" src="" alt="大圖檢視" class="max-h-[85vh] max-w-[90vw] object-contain rounded shadow-2xl" onclick="event.stopPropagation()">
+    <p id="lightbox-caption" class="text-gray-300 text-sm mt-4 font-serif text-center max-w-xl"></p>
+  </div>
+
+  <!-- 核心主控腳本 -->
+  <script>
+    // 預設備援資料 (確保在任何網路異常下都能 100% 渲染完整版面)
+    const fallbackArticles = [
+      {
+        id: 1,
+        title: "尋訪池上的秋收午後",
+        category: "慢遊散記",
+        date: "2026-11-01",
+        summary: "深秋時節造訪花東縱谷，微風掠過金黃色的連綿稻浪，空氣裡飄散著穀物的乾爽香氣。",
+        images: [
+          {
+            url: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80",
+            caption: "午後斜陽下的金黃稻浪與遠處的中央山脈"
+          },
+          {
+            url: "https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?w=1200&q=80",
+            caption: "平靜無波的大坡池水面，倒映著深秋雲影"
+          }
+        ],
+        content: `秋天的池上，稻浪在微風中翻滾，空氣中滿是成熟稻穀的乾燥香氣。我們租了一輛自行車，沿著沒有電線桿的伯朗大道慢慢騎行。\n\n[img:1, 午後陽光灑在即將收割的稻穗上]\n\n穿過大坡池邊的小徑，水面平靜得像面鏡子，倒映著中央山脈的深邃輪廓。當地的老農夫熱情地跟我們揮手，那是都市裡少有的質樸與親切。\n\n[img:2, 平靜無波的大坡池與遠山倒影]\n\n傍晚時分，夕陽將整片縱谷染成溫暖的橘紅色。在這裡，時間彷彿放慢了腳步，讓人重新找回久違的專注與寧靜。`
+      },
+      {
+        id: 2,
+        title: "山林深處的霧氣與微光",
+        category: "自然紀實",
+        date: "2026-10-24",
+        summary: "清晨五點的高山林道，霧氣籠罩著古老的檜木群，晨光在冷空氣中顯現出一道道光束。",
+        images: [
+          {
+            url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1200&q=80",
+            caption: "第一道晨曦穿越巨木林冠"
+          }
+        ],
+        content: `晨曦穿透潮濕的薄霧，微風拂動松針，露水無聲地滴落在厚厚的苔蘚上。踏在泥土小徑上，每一步都彷彿能感受到大地的呼吸與脈搏。\n\n[img:1, 第一道晨曦穿越巨木林冠]\n\n遠處鳥鳴清脆，林間的光斑隨風搖曳。在這樣無人的深山清晨，感官變得格外敏銳，所有世俗的喧囂在此刻都化作沉靜。`
+      }
+    ];
+
+    let articles = [];
+    let currentFontSizeLevel = 1;
+    const fontSizes = ['text-sm', 'text-base', 'text-lg', 'text-xl'];
+
+    function normalizeImageUrl(imgItem) {
+      if (!imgItem) return '';
+      if (typeof imgItem === 'string') return imgItem;
+      return imgItem.url || imgItem.src || '';
+    }
+
+    function normalizeImageCaption(imgItem) {
+      if (!imgItem || typeof imgItem === 'string') return '';
+      return imgItem.caption || imgItem.alt || '';
+    }
+
+    function updateStatus(text, isError = false) {
+      const el = document.getElementById('status-indicator');
+      if (el) {
+        el.textContent = text;
+        el.className = isError 
+          ? "text-xs text-rose-400 mt-2 sm:mt-0 font-mono" 
+          : "text-xs text-gray-400 mt-2 sm:mt-0 font-mono";
+      }
+    }
+
+    // 核心資料讀取流程 (含 3 秒逾時保護)
+    async function initBlogEngine() {
+      updateStatus('正在連線取得 articles.json...');
+
+      const candidatePaths = [
+        `articles.json?t=${Date.now()}`,
+        `./articles.json?t=${Date.now()}`
+      ];
+
+      let loadedData = null;
+
+      for (const path of candidatePaths) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3000); // 3 秒超時防止無限卡死
+
+          const response = await fetch(path, { signal: controller.signal });
+          clearTimeout(timer);
+
+          if (response.ok) {
+            const rawText = await response.text();
+            if (rawText && rawText.trim().length > 0) {
+              loadedData = JSON.parse(rawText);
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn(`嘗試路徑 ${path} 未果:`, e);
+        }
+      }
+
+      if (loadedData) {
+        if (Array.isArray(loadedData)) {
+          articles = loadedData;
+        } else if (loadedData.articles && Array.isArray(loadedData.articles)) {
+          articles = loadedData.articles;
+        } else {
+          articles = [loadedData];
+        }
+        updateStatus(`已連線載入：共 ${articles.length} 篇專欄`);
+      } else {
+        console.warn('線上 articles.json 讀取超時或檔案為空，切換為預設備援資料展示。');
+        articles = fallbackArticles;
+        updateStatus(`讀取超時，已啟用預設備援內容 (共 ${articles.length} 篇)`);
+      }
+
+      // 依序執行介面渲染與 Canvas 初始化
+      renderArticles();
+      initCanvasGallery();
+    }
+
+    // 渲染專欄卡片列表
+    function renderArticles() {
+      const grid = document.getElementById('articles-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      articles.forEach((art, idx) => {
+        const artId = art.id || idx + 1;
+        const imgs = Array.isArray(art.images) ? art.images : [];
+        const coverUrl = imgs.length > 0 
+          ? normalizeImageUrl(imgs[0]) 
+          : 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800';
+        const photoCount = imgs.length;
+
+        const card = document.createElement('div');
+        card.className = "bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-yellow-600 transition duration-300 flex flex-col shadow-lg cursor-pointer transform hover:-translate-y-1";
+        card.onclick = () => openArticle(artId);
+
+        card.innerHTML = `
+          <div class="relative h-56 overflow-hidden bg-black">
+            <img src="${coverUrl}" alt="${art.title || ''}" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
+            <div class="absolute top-4 left-4">
+              <span class="px-2.5 py-1 text-xs rounded bg-black bg-opacity-70 text-gold border border-yellow-700">${art.category || '專欄'}</span>
+            </div>
+            ${photoCount > 1 ? `
+              <div class="absolute bottom-3 right-3 text-xs bg-black bg-opacity-70 text-gray-300 px-2.5 py-1 rounded-full border border-gray-700 flex items-center space-x-1.5">
+                <span>📷</span>
+                <span>${photoCount} 張相片</span>
+              </div>
+            ` : ''}
+          </div>
+          <div class="p-6 flex-1 flex flex-col justify-between">
+            <div>
+              <p class="text-xs text-gray-400 mb-2">${art.date || ''}</p>
+              <h3 class="font-serif text-xl text-white font-semibold hover:text-gold transition line-clamp-1">${art.title || '無標題'}</h3>
+              <p class="text-sm text-gray-400 mt-3 line-clamp-2 leading-relaxed">${art.summary || ''}</p>
+            </div>
+            <div class="pt-6 mt-6 border-t border-gray-800 flex items-center justify-between text-xs text-gold font-medium">
+              <span>閱讀專題全文</span>
+              <span>→</span>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // 展開閱讀全文彈窗
+    function openArticle(id) {
+      const art = articles.find((a, idx) => (a.id || idx + 1) === id);
+      if (!art) return;
+
+      document.getElementById('modal-title').textContent = art.title || '';
+      document.getElementById('modal-category').textContent = art.category || '專題';
+      document.getElementById('modal-date').textContent = art.date || '';
+
+      const contentStr = art.content || '';
+      const words = contentStr.replace(/\s+/g, '').length;
+      document.getElementById('modal-charcount').textContent = `共 ${words} 字`;
+      document.getElementById('modal-readtime').textContent = `${Math.max(1, Math.ceil(words / 300))} 分鐘閱讀`;
+
+      const imgs = Array.isArray(art.images) ? art.images : [];
+      const firstImg = imgs.length > 0 ? imgs[0] : null;
+      const coverUrl = normalizeImageUrl(firstImg);
+      const coverCaption = normalizeImageCaption(firstImg) || art.title;
+      const modalCover = document.getElementById('modal-cover');
+      modalCover.src = coverUrl;
+      modalCover.onclick = () => openLightbox(coverUrl, coverCaption);
+
+      const container = document.getElementById('modal-content-container');
+      container.innerHTML = '';
+
+      const usedPhotoIndices = new Set();
+      const paragraphs = contentStr.split(/\n\s*\n/);
+
+      paragraphs.forEach(para => {
+        const trimmed = para.trim();
+        if (!trimmed) return;
+
+        const imgMatch = trimmed.match(/^\[img:(\d+)(?:,\s*(.*?))?\]$/);
+        if (imgMatch) {
+          const index = parseInt(imgMatch[1], 10) - 1;
+          const customCaption = imgMatch[2];
+
+          if (imgs && imgs[index]) {
+            usedPhotoIndices.add(index);
+            const photoItem = imgs[index];
+            const pUrl = normalizeImageUrl(photoItem);
+            const pCap = customCaption || normalizeImageCaption(photoItem);
+
+            const fig = document.createElement('figure');
+            fig.className = "my-6 cursor-pointer";
+            fig.onclick = () => openLightbox(pUrl, pCap);
+            fig.innerHTML = `
+              <div class="relative overflow-hidden rounded-xl bg-black border border-gray-700 shadow-xl">
+                <img src="${pUrl}" alt="${pCap}" class="w-full max-h-[500px] object-cover">
+                <div class="absolute bottom-3 right-3 text-xs bg-black bg-opacity-70 text-gray-300 px-2 py-1 rounded">點擊放大檢視</div>
+              </div>
+              ${pCap ? `<figcaption class="text-center text-xs text-gray-400 mt-2 font-sans italic">${pCap}</figcaption>` : ''}
+            `;
+            container.appendChild(fig);
+          }
+        } else {
+          const p = document.createElement('p');
+          p.className = `leading-relaxed text-gray-300 ${fontSizes[currentFontSizeLevel]}`;
+          p.textContent = trimmed;
+          container.appendChild(p);
+        }
+      });
+
+      const remainingContainer = document.getElementById('modal-remaining-gallery');
+      const remainingGrid = document.getElementById('remaining-photos-grid');
+      remainingGrid.innerHTML = '';
+
+      const unreferenced = imgs.map((img, i) => ({ item: img, originalIndex: i }))
+                               .filter(obj => !usedPhotoIndices.has(obj.originalIndex));
+
+      if (unreferenced.length > 0) {
+        remainingContainer.classList.remove('hidden');
+        unreferenced.forEach(obj => {
+          const uUrl = normalizeImageUrl(obj.item);
+          const uCap = normalizeImageCaption(obj.item);
+          const thumb = document.createElement('div');
+          thumb.className = "relative h-28 sm:h-36 rounded-lg overflow-hidden border border-gray-700 bg-black cursor-pointer";
+          thumb.onclick = () => openLightbox(uUrl, uCap);
+          thumb.innerHTML = `<img src="${uUrl}" class="w-full h-full object-cover">`;
+          remainingGrid.appendChild(thumb);
+        });
+      } else {
+        remainingContainer.classList.add('hidden');
+      }
+
+      document.getElementById('article-modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeArticleModal() {
+      document.getElementById('article-modal').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+
+    function changeFontSize(delta) {
+      currentFontSizeLevel = Math.max(0, Math.min(fontSizes.length - 1, currentFontSizeLevel + delta));
+      const container = document.getElementById('modal-content-container');
+      container.querySelectorAll('p').forEach(p => {
+        fontSizes.forEach(cls => p.classList.remove(cls));
+        p.classList.add(fontSizes[currentFontSizeLevel]);
+      });
+    }
+
+    function openLightbox(url, caption) {
+      if (!url) return;
+      const box = document.getElementById('lightbox');
+      const img = document.getElementById('lightbox-img');
+      const cap = document.getElementById('lightbox-caption');
+      img.src = url;
+      cap.textContent = caption || '';
+      box.classList.remove('hidden');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.add('hidden');
+    }
+
+    // Canvas 3D 浮動展廳引擎
+    function initCanvasGallery() {
+      const canvas = document.getElementById('stage');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      let width, height;
+      let scrollOffset = 0;
+      let targetScroll = 0;
+      let isDragging = false;
+      let startX = 0;
+      let mouseX = 0, mouseY = 0;
+
+      function resize() {
+        width = canvas.width = canvas.parentElement.clientWidth;
+        height = canvas.height = canvas.parentElement.clientHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      const galleryItems = [];
+      articles.forEach((art, idx) => {
+        const imgs = Array.isArray(art.images) ? art.images : [];
+        if (imgs.length > 0) {
+          const imgUrl = normalizeImageUrl(imgs[0]);
+          const img = new Image();
+          img.src = imgUrl;
+
+          const itemObj = {
+            img: img,
+            loaded: false,
+            title: art.title || '',
+            category: art.category || '精選',
+            articleId: art.id || idx + 1
+          };
+
+          img.onload = () => {
+            itemObj.loaded = true;
+          };
+
+          galleryItems.push(itemObj);
+        }
+      });
+
+      canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+      });
+      window.addEventListener('mouseup', () => isDragging = false);
+      window.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+        if (isDragging) {
+          const delta = e.clientX - startX;
+          targetScroll -= delta * 1.5;
+          startX = e.clientX;
+        }
+      });
+
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          startX = e.touches[0].clientX;
+        }
+      }, { passive: true });
+      window.addEventListener('touchend', () => isDragging = false);
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches.length === 1) {
+          const delta = e.touches[0].clientX - startX;
+          targetScroll -= delta * 1.5;
+          startX = e.touches[0].clientX;
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        const cardWidth = Math.min(320, width * 0.45);
+        const cardHeight = cardWidth * 1.25;
+        const spacing = cardWidth + 50;
+
+        galleryItems.forEach((item, i) => {
+          const x = (width / 2) + (i * spacing) - scrollOffset;
+          const y = height / 2;
+          if (
+            clickX >= x - cardWidth / 2 &&
+            clickX <= x + cardWidth / 2 &&
+            clickY >= y - cardHeight / 2 &&
+            clickY <= y + cardHeight / 2
+          ) {
+            openArticle(item.articleId);
+          }
+        });
+      });
+
+      function render() {
+        scrollOffset += (targetScroll - scrollOffset) * 0.08;
+
+        ctx.fillStyle = '#12161a';
+        ctx.fillRect(0, 0, width, height);
+
+        const grad = ctx.createRadialGradient(mouseX, mouseY, 10, mouseX, mouseY, Math.max(width, height) * 0.6);
+        grad.addColorStop(0, 'rgba(212, 175, 55, 0.06)');
+        grad.addColorStop(1, 'rgba(18, 22, 26, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        const cardWidth = Math.min(320, width * 0.45);
+        const cardHeight = cardWidth * 1.25;
+        const spacing = cardWidth + 50;
+
+        galleryItems.forEach((item, i) => {
+          const x = (width / 2) + (i * spacing) - scrollOffset;
+          const y = height / 2;
+
+          if (x < -cardWidth || x > width + cardWidth) return;
+
+          const distFromCenter = Math.abs(x - width / 2);
+          const scale = Math.max(0.78, 1 - distFromCenter / (width * 1.1));
+          const alpha = Math.max(0.35, 1 - distFromCenter / (width * 0.8));
+
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.scale(scale, scale);
+          ctx.globalAlpha = alpha;
+
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+          ctx.shadowBlur = 24;
+          ctx.shadowOffsetY = 12;
+
+          const rx = -cardWidth / 2;
+          const ry = -cardHeight / 2;
+          const radius = 16;
+
+          ctx.beginPath();
+          ctx.moveTo(rx + radius, ry);
+          ctx.lineTo(rx + cardWidth - radius, ry);
+          ctx.quadraticCurveTo(rx + cardWidth, ry, rx + cardWidth, ry + radius);
+          ctx.lineTo(rx + cardWidth, ry + cardHeight - radius);
+          ctx.quadraticCurveTo(rx + cardWidth, ry + cardHeight, rx + cardWidth - radius, ry + cardHeight);
+          ctx.lineTo(rx + radius, ry + cardHeight);
+          ctx.quadraticCurveTo(rx, ry + cardHeight, rx, ry + cardHeight - radius);
+          ctx.lineTo(rx, ry + radius);
+          ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
+          ctx.closePath();
+
+          ctx.fillStyle = '#161b22';
+          ctx.fill();
+          ctx.clip();
+
+          if (item.loaded) {
+            ctx.drawImage(item.img, rx, ry, cardWidth, cardHeight);
+          } else {
+            ctx.fillStyle = '#222831';
+            ctx.fillRect(rx, ry, cardWidth, cardHeight);
+          }
+
+          const textGrad = ctx.createLinearGradient(0, cardHeight / 4, 0, cardHeight / 2);
+          textGrad.addColorStop(0, 'rgba(0,0,0,0)');
+          textGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
+          ctx.fillStyle = textGrad;
+          ctx.fillRect(rx, ry, cardWidth, cardHeight);
+
+          ctx.shadowColor = 'transparent';
+          ctx.fillStyle = '#d4af37';
+          ctx.font = '11px sans-serif';
+          ctx.fillText((item.category || '').toUpperCase(), rx + 20, ry + cardHeight - 48);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '600 17px "Noto Serif TC", serif';
+          ctx.fillText(item.title || '', rx + 20, ry + cardHeight - 24);
+
+          ctx.restore();
+        });
+
+        requestAnimationFrame(render);
+      }
+      render();
+    }
+
+    // 啟動入口：立即直接執行，不再等待任何可能錯過的事件
+    try {
+      initBlogEngine();
+    } catch (engineError) {
+      console.error('引擎啟動失敗:', engineError);
+      updateStatus('引擎啟動失敗：' + engineError.message, true);
+    }
+  </script>
+</body>
+</html>
