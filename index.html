@@ -32,7 +32,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     .glass {
-      background: rgba(18, 22, 26, 0.78);
+      background: rgba(18, 22, 26, 0.82);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
@@ -62,4 +62,108 @@
         <span class="text-xs uppercase tracking-widest text-slate-400 border-l border-slate-700 pl-3 hidden sm:inline">Stories & Perspectives</span>
       </div>
       <div class="flex items-center space-x-6 text-sm">
-        <a href="#
+        <a href="#gallery" class="text-slate-400 hover:text-white transition">3D 展廳</a>
+        <a href="#articles" class="text-slate-400 hover:text-white transition">精選專欄</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="pt-20">
+    <!-- Canvas 3D 浮動展廳 -->
+    <section id="gallery" class="relative w-full h-[65vh] min-h-[480px] overflow-hidden bg-brand-900 border-b border-white/5">
+      <canvas id="stage" class="w-full h-full cursor-grab active:cursor-grabbing block"></canvas>
+      
+      <!-- 畫布輔助說明 -->
+      <div class="absolute bottom-6 left-6 pointer-events-none z-10 hidden sm:flex items-center space-x-2 text-xs tracking-wider text-slate-400 uppercase glass px-3.5 py-1.5 rounded-full border border-white/10">
+        <svg class="w-4 h-4 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+        </svg>
+        <span>左右滑動展廳 · 點擊卡片瀏覽專題</span>
+      </div>
+
+      <!-- 標題裝飾 -->
+      <div class="absolute top-8 left-8 z-10 pointer-events-none">
+        <p class="text-brand-gold tracking-widest text-xs uppercase font-medium mb-1">Visual Exhibition</p>
+        <h1 class="text-2xl sm:text-3xl font-serif text-white tracking-wide">流動光影空間</h1>
+      </div>
+    </section>
+
+    <!-- 文章卡片清單 -->
+    <section id="articles" class="max-w-7xl mx-auto px-6 py-16">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-12 border-b border-white/10 pb-6">
+        <div>
+          <span class="text-brand-gold tracking-widest text-xs uppercase font-semibold">Articles & Essays</span>
+          <h2 class="text-3xl font-serif text-white mt-1">典藏專題文章</h2>
+        </div>
+        <p class="text-sm text-slate-400 mt-2 sm:mt-0" id="article-count-label">載入中...</p>
+      </div>
+
+      <!-- 卡片網格 -->
+      <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- 動態渲染卡片 -->
+      </div>
+    </section>
+  </main>
+
+  <!-- 閱讀全文彈窗 (Modal) -->
+  <div id="article-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/85 backdrop-blur-md transition-opacity duration-300">
+    <div class="min-h-screen px-4 py-8 flex items-center justify-center">
+      <article class="bg-[#161b22] border border-white/15 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl relative my-auto">
+        
+        <!-- 頂部關閉按鈕 -->
+        <button onclick="closeArticleModal()" class="absolute top-5 right-5 z-20 w-10 h-10 rounded-full glass border border-white/20 text-white flex items-center justify-center hover:bg-white/20 transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+
+        <!-- 封面 Banner -->
+        <div class="relative h-64 sm:h-96 w-full overflow-hidden bg-black cursor-pointer group">
+          <img id="modal-cover" src="" alt="封面照片" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+          <div class="absolute inset-0 bg-gradient-to-t from-[#161b22] via-[#161b22]/40 to-transparent"></div>
+          
+          <div class="absolute bottom-6 left-6 right-6">
+            <span id="modal-category" class="inline-block px-3 py-1 text-xs rounded-full bg-brand-gold/20 text-brand-gold border border-brand-gold/40 mb-3 font-medium">分類</span>
+            <h1 id="modal-title" class="text-2xl sm:text-4xl font-serif text-white font-bold tracking-wide text-balance">標題</h1>
+            <div class="flex items-center space-x-4 text-xs text-slate-400 mt-3 font-sans">
+              <span id="modal-date">日期</span>
+              <span>·</span>
+              <span id="modal-readtime">3 分鐘閱讀</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 閱讀操控列 -->
+        <div class="px-8 py-3 border-b border-white/10 flex items-center justify-between text-xs text-slate-400 font-sans">
+          <span id="modal-charcount">共 0 字</span>
+          <div class="flex items-center space-x-2">
+            <span>字級縮放：</span>
+            <button onclick="changeFontSize(-1)" class="w-7 h-7 rounded border border-white/10 hover:border-white/30 flex items-center justify-center">A-</button>
+            <button onclick="changeFontSize(1)" class="w-7 h-7 rounded border border-white/10 hover:border-white/30 flex items-center justify-center font-bold">A+</button>
+          </div>
+        </div>
+
+        <!-- 正文圖文交錯排版區塊 -->
+        <div id="modal-content-container" class="px-8 sm:px-14 py-10 font-serif leading-loose text-slate-300 space-y-8 text-base">
+          <!-- 動態插入段落與相片 -->
+        </div>
+
+        <!-- 文末其餘照片畫廊 -->
+        <div id="modal-remaining-gallery" class="px-8 sm:px-14 pb-14 hidden font-sans">
+          <div class="border-t border-white/10 pt-8 mt-6">
+            <h3 class="text-xs tracking-widest uppercase text-brand-gold mb-6 font-semibold">更多紀實寫真</h3>
+            <div id="remaining-photos-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <!-- 動態生成其餘照片 -->
+            </div>
+          </div>
+        </div>
+
+      </article>
+    </div>
+  </div>
+
+  <!-- 全螢幕燈箱 (Lightbox) -->
+  <div id="lightbox" class="fixed inset-0 z-50 hidden bg-black/95 flex flex-col items-center justify-center p-4 cursor-zoom-out" onclick="closeLightbox()">
+    <button class="absolute top-6 right-6 text-white text-3xl font-light hover:text-brand-gold transition cursor-pointer">&times;</button>
+    <img id="lightbox-img" src="" alt="大圖檢視" class="max-h-[85vh] max-w-[90vw] object-contain rounded shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
+    <p id="lightbox-caption" class="text-
